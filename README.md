@@ -2,10 +2,10 @@
 
 
 
-Requirements:
--Python
--Pip
--Flask
--subprocess
--json
+#Requirements:
+-Python /n
+-Pip /n
+-Flask /n
+-subprocess /n
+-json /n
 -ffmpeg (all comp)
