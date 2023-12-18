@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análisis de Streams</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>Análisis de Streams</h1>
+        <button type="button" class="btn btn-primary" data-toggle="modal" id="groomButton" data-target="#streamInfoModal">
+            Groom
+        </button>
+    </div>
+
+    <!-- Bootstrap JS, jQuery, and Popper.js -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <!-- Modal -->
+    <div class="modal fade" id="streamInfoModal" tabindex="-1" role="dialog" aria-labelledby="streamInfoModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="streamInfoModalLabel">Información del Stream</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <!-- Nav tabs -->
+                    <ul class="nav nav-tabs" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active" id="video-tab" data-toggle="tab" href="#video-pane" role="tab" aria-controls="video-pane" aria-selected="true">Video</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="audio-tab" data-toggle="tab" href="#audio-pane" role="tab" aria-controls="audio-pane" aria-selected="false">Audio</a>
+                        </li>
+                    </ul>
+
+                    <!-- Tab panes -->
+                    <div class="tab-content mt-2">
+                        <div class="tab-pane fade show active" id="video-pane" role="tabpanel" aria-labelledby="video-tab">
+                            <!-- Contenido de la pestaña de información de video -->
+                            <h5>Información de Video</h5>
+                            <div id="videoInfoContent"></div>
+                        </div>
+                        <div class="tab-pane fade" id="audio-pane" role="tabpanel" aria-labelledby="audio-tab">
+                            <!-- Contenido de la pestaña de información de audio -->
+                            <h5>Información de Audio</h5>
+                            <div id="audioInfoContent"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script para cargar la información en las pestañas al abrir el modal -->
+    <script>
+        $('#groomButton').on('show.bs.modal', function (event) {
+    var modal = $(this);
+    var videoPane = modal.find('#video-pane');
+    var audioPane = modal.find('#audio-pane');
+
+    // Realizar una solicitud AJAX para obtener la información de display_streams
+    $("#groomButton").on("click", function () {
+            $.ajax({
+                type: "GET",
+                url: "/get_streams",
+                contentType: "application/json; charset=utf-8",
+                dataType: 'json',
+                async: false,
+                cache: false,
+                success: function (data) {
+            var streams = JSON.parse(data);
+
+            // Filtrar streams de video y audio
+            var videoStreams = streams.filter(function (stream) {
+                return stream.codec_type === 'video';
+            });
+
+            var audioStreams = streams.filter(function (stream) {
+                return stream.codec_type === 'audio';
+            });
+
+            // Simular carga de información de video
+            var videoInfo = '<ul>';
+            videoStreams.forEach(function (stream, index) {
+                videoInfo += '<li><strong>Stream ' + (index + 1) + ':</strong> ' + JSON.stringify(stream) + '</li>';
+            });
+            videoInfo += '</ul>';
+            videoPane.find('#videoInfoContent').html(videoInfo);
+
+            // Simular carga de información de audio
+            var audioInfo = '<ul>';
+            audioStreams.forEach(function (stream, index) {
+                audioInfo += '<li><strong>Stream ' + (index + 1) + ':</strong> ' + JSON.stringify(stream) + '</li>';
+            });
+            audioInfo += '</ul>';
+            audioPane.find('#audioInfoContent').html(audioInfo);
+        }
+    });
+});
+    </script>
+</body>
+</html>

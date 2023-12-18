@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análisis de Streams</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>Análisis de Streams</h1>
+
+        <button type="submit"  class="btn btn-primary" id="groomButton" data-toggle="modal" data-target="#streamInfoModal">
+            Groom
+        </button>
+
+
+
+		<div id="result"></div>
+
+
+
+    </div>
+
+    <!-- Bootstrap JS, jQuery, and Popper.js -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+	<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+
+    <!-- Modal -->
+    <div class="modal fade" id="streamInfoModal" tabindex="-1" role="dialog" aria-labelledby="streamInfoModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="streamInfoModalLabel">Información del Stream</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <!-- Nav tabs -->
+                    <ul class="nav nav-tabs" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active" id="video-tab" data-toggle="tab" href="#video-pane" role="tab" aria-controls="video-pane" aria-selected="true">Video</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="audio-tab" data-toggle="tab" href="#audio-pane" role="tab" aria-controls="audio-pane" aria-selected="false">Audio</a>
+                        </li>
+                    </ul>
+
+                    <!-- Tab panes -->
+                    <div class="tab-content mt-2">
+                        <div class="tab-pane fade show active" id="video-pane" role="tabpanel" aria-labelledby="video-tab">
+                            <!-- Contenido de la pestaña de información de video -->
+                            <h5>Información de Video</h5>
+                            <div id="videoInfoContent"></div>
+                        </div>
+                        <div class="tab-pane fade" id="audio-pane" role="tabpanel" aria-labelledby="audio-tab">
+                            <!-- Contenido de la pestaña de información de audio -->
+                            <h5>Información de Audio</h5>
+                            <div id="audioInfoContent"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                    <!-- Botón de aceptar -->
+                <button type="button" class="btn btn-primary" id="acceptButton">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script para cargar la información en las pestañas al abrir el modal -->
+    <script>
+
+    $(document).ready(function () {
+    $("#groomButton").on("click", function () {
+        $.ajax({
+            type: "GET",
+            url: "/get_streams",
+            contentType: "application/json; charset=utf-8",
+            dataType: 'json',
+            async: false,
+            cache: false,
+            success: function (result) {
+                // Limpiar el contenido de las pestañas
+                $("#videoInfoContent").empty();
+                $("#audioInfoContent").empty();
+
+                // Crear la tabla para video
+                createTable(result.streams.filter(stream => stream.codec_type === 'video'), "#videoInfoContent", ['index', 'id', 'codec_name', 'profile', 'width', 'height']);
+
+                // Crear la tabla para audio con el campo tags.language como un elemento select
+                createTable(result.streams.filter(stream => stream.codec_type === 'audio'), "#audioInfoContent", ['index', 'id', 'tags.language', 'codec_name', 'profile']);
+
+                // Mostrar la modal después de cargar la información
+                $('#streamInfoModal').modal('show');
+            },
+            error: function (xhr, status, error) {
+                console.error("Error en la solicitud:", status, error);
+                location.reload();
+            }
+        });
+    });
+
+    // Función para crear la tabla
+    function createTable(streams, containerId, fieldsToShow) {
+        var table = $('<table>').addClass('table table-bordered').appendTo(containerId);
+        var thead = $('<thead>').appendTo(table);
+        var tbody = $('<tbody>').appendTo(table);
+
+        // Tomar los campos del primer stream como referencia
+        var fields = fieldsToShow || Object.keys(streams[0]);
+
+        // Crear el encabezado de la tabla con los nombres de los campos
+        var headerRow = $('<tr>').appendTo(thead);
+        fields.forEach(function (field) {
+            $('<th>').text(field).appendTo(headerRow);
+        });
+
+        // Iterar sobre cada stream y agregar una fila por cada uno
+        streams.forEach(function (stream) {
+            var row = $('<tr>').appendTo(tbody);
+
+            // Agregar celdas con la información de cada campo
+            fields.forEach(function (field) {
+    var cell = $('<td>').appendTo(row);
+    var value = getFieldByPath(stream, field);
+
+    // Si el campo es 'tags.language', crear un elemento select en lugar de un campo de entrada
+    if (field === 'tags.language') {
+        var select = $('<select>').addClass('form-control').appendTo(cell);
+
+        // Agregar la opción por defecto
+        $('<option>').val('default').text('default').appendTo(select);
+
+        // Agregar opciones al menú desplegable
+        ['eng', 'deu', 'fra'].forEach(function (option) {
+            $('<option>').val(option).text(option).appendTo(select);
+        });
+
+        // Seleccionar la opción correspondiente al valor actual del campo
+        select.val(value || 'default');
+        select.attr('data-field', field); // Añadir atributo 'data-field' para identificar el campo
+    } else {
+        // Si no es 'tags.language', crear un campo de entrada editable
+        var input = $('<input>').attr('type', 'text').addClass('form-control').val(value).appendTo(cell);
+        input.attr('data-field', field); // Añadir atributo 'data-field' para identificar el campo
+    }
+});
+        });
+
+        // Agregar un botón para guardar los cambios de audio y video
+var saveButton = $('<button>').attr('type', 'button').addClass('btn btn-primary').text('Guardar Cambios').appendTo(containerId);
+saveButton.on('click', function () {
+    var changes = [];
+
+    // Iterar sobre las pestañas y recopilar los cambios de cada una
+    ['#videoInfoContent', '#audioInfoContent'].forEach(function (contentId) {
+        var contentType = contentId.includes('video') ? 'video' : 'audio';
+
+        $(contentId).find('tbody tr').each(function () {
+            var rowChanges = {
+                type: contentType
+            };
+
+            $(this).find('input[data-field], select[data-field]').each(function () {
+                var fieldName = $(this).data('field');
+                var fieldValue = $(this).val();
+                rowChanges[fieldName] = fieldValue;
+            });
+
+            changes.push(rowChanges);
+        });
+    });
+
+    // Enviar los cambios a la ruta Flask
+    $.ajax({
+        type: "POST",
+        url: "/retranscode",
+        contentType: "application/json; charset=utf-8",
+        dataType: 'json',
+        data: JSON.stringify(changes),
+        success: function (response) {
+            console.log("Cambios guardados exitosamente:", response);
+        },
+        error: function (xhr, status, error) {
+            console.error("Error al guardar cambios:", status, error);
+        }
+    });
+});
+    }
+
+    // Función para obtener el valor de un campo anidado en un objeto usando una cadena de ruta (path)
+    function getFieldByPath(obj, path) {
+        var parts = path.split('.');
+        var value = obj;
+        parts.forEach(function (part) {
+            value = value && value[part];
+        });
+        return value;
+    }
+});
+    </script>
+	<!--<script>
+            $(document).ready(function () {
+    // ... Tu código existente ...
+
+    // Controlador de eventos para el botón "Guardar"
+    $("#acceptButton").on("click", function () {
+        guardarCambios();
+    });
+
+    // Función para guardar los cambios
+    function guardarCambios() {
+        // Obtener la tabla de la pestaña activa
+        var tabla = $("#audio-pane").hasClass("show") ? $("#audioInfoContent") : $("#videoInfoContent");
+
+        // Obtener las filas de la tabla
+        var filas = tabla.find("tbody tr");
+
+        // Iterar sobre las filas y guardar los cambios
+        filas.each(function (index, fila) {
+            var inputs = $(fila).find("input, select");
+
+            // Obtener el objeto de stream asociado a la fila
+            var streamIndex = parseInt($(fila).data("index"));
+            var stream = result.streams[streamIndex];
+
+            // Iterar sobre los inputs y actualizar el objeto stream
+            inputs.each(function (inputIndex, input) {
+                var fieldName = $(input).data("field");
+                var valor = $(input).val();
+
+                // Imprimir información en consola
+                console.log(`Guardando cambio en stream ${streamIndex}, campo ${fieldName}, nuevo valor: ${valor}`);
+
+                setFieldByPath(stream, fieldName, valor);
+            });
+        });
+
+        // Imprimir información en consola
+        console.log("Cambios guardados:", result.streams);
+
+        // Cerrar la modal después de guardar los cambios
+        $('#streamInfoModal').modal('hide');
+    }
+});
+    </script>-->
+  </body>
+  </html>
